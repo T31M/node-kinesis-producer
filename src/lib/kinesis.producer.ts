@@ -77,7 +77,7 @@ export class KinesisProducer {
         if (this.queue.length > 0) {
           if (this._loggingEnabled) {
             this.logger.warn(
-              `Queue not empty and not flushed since ${diff} seconds. Flushing now.`
+              `Queue not empty and not flushed since ${diff} ms. Flushing now.`
             );
           }
           await this.flushQueue();
