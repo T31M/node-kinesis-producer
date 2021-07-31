@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.5](https://github.com/TWAICE/node-kinesis-producer/compare/v0.0.4...v0.0.5) (2021-07-31)
+
+
+### Features
+
+* extend logging ([18def64](https://github.com/TWAICE/node-kinesis-producer/commit/18def647b4ee18bcf3d4d42bb2e302e844b9aa5a))
+
 ### [0.0.4](https://github.com/TWAICE/node-kinesis-producer/compare/v0.0.3...v0.0.4) (2021-02-17)
 
 ### [0.0.3](https://github.com/TWAICE/node-kinesis-producer/compare/v0.0.2...v0.0.3) (2021-02-16)
