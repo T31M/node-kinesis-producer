@@ -10,6 +10,7 @@ import {
   PutRecordsRequestEntry,
   PutRecordsResultEntry,
 } from '@aws-sdk/client-kinesis';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 import { delay, getRecordSizeInBytes } from '../helpers/utils';
 
@@ -26,6 +27,8 @@ export class KinesisProducer {
   private readonly maxRetries: number;
   private queueSizeInBytes: number;
   private _client: KinesisClient;
+  private _sqsClient: SQSClient;
+  private _sqsQueueUrl: string;
   private lastFlush: Date;
   private readonly flushIntervalFn: NodeJS.Timer;
   private readonly logger: Logger;
@@ -45,9 +48,13 @@ export class KinesisProducer {
       maxRetries,
       logger,
       loggingEnabled,
+      sqsRegion,
+      sqsQueueUrl,
     } = kinesisProducerConfig;
     this.streamName = streamName;
     this._client = new KinesisClient(clientConfig || {});
+    this._sqsClient = new SQSClient({ region: sqsRegion });
+    this._sqsQueueUrl = sqsQueueUrl || '';
     this.queue = [];
     this.batchSize = Math.min(500, batchSize || 500);
     this.batchSizeInBytes = batchSizeInBytes || 1024 * 1024;
@@ -152,10 +159,24 @@ export class KinesisProducer {
     attempt = 1
   ): Promise<PutRecordsResultEntry[] | undefined | null> {
     if (attempt > this.maxRetries) {
-      throw new Error(
-        `Max retries ${this.maxRetries} reached for record batch.`
-      );
       // implement DQL logic (SQS / S3) here
+      if (this._sqsQueueUrl !== '') {
+        const params = {
+          DelaySeconds: 0,
+          MessageAttributes: {},
+          MessageBody: JSON.stringify(records),
+          QueueUrl: this._sqsQueueUrl,
+        };
+        try {
+          await this._sqsClient.send(new SendMessageCommand(params));
+          this.logger.log('Successfully inserted into SQS DLQ.');
+        } catch (err) {
+          this.logger.error('Error inserting into SQS DLQ', err);
+        }
+      }
+      throw new Error(
+        `Max retries ${this.maxRetries} reached for record batch. Payload saved to SQS DLQ`
+      );
     }
 
     // exponential backoff before retrying.

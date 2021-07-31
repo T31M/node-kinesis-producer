@@ -28,6 +28,8 @@ export interface KinesisProducerConfig {
   maxRetries?: number;
   loggingEnabled?: boolean;
   logger?: Logger;
+  sqsRegion?: string;
+  sqsQueueUrl?: string;
 }
 
 export interface Logger {
