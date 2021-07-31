@@ -128,7 +128,7 @@ test.serial('it retries failed records', async (t) => {
     await t.context.producer.flushQueue();
   });
   t.is(sendFake.callCount, 3);
-  t.is(error.message, `Max retries ${MAX_RETRIES} reached for this batch.`);
+  t.is(error.message, `Max retries ${MAX_RETRIES} reached for record batch.`);
 });
 
 test.serial('it flushes the queue periodically', async (t) => {

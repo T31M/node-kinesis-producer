@@ -15,6 +15,8 @@ import { delay, getRecordSizeInBytes } from '../helpers/utils';
 
 import { KinesisProducerConfig, KinesisRecord, Logger } from './interfaces';
 
+const MAX_RECORD_SIZE = 1024 * 1024;
+
 export class KinesisProducer {
   private readonly streamName: string;
   private queue: Array<PutRecordsRequestEntry>;
@@ -100,9 +102,9 @@ export class KinesisProducer {
       kinesisRecord.Data = Buffer.from(kinesisRecord.Data);
     }
     const recordSize = getRecordSizeInBytes(kinesisRecord);
-    if (recordSize > this.batchSizeInBytes) {
+    if (recordSize > MAX_RECORD_SIZE) {
       throw new Error(
-        `Record size ${recordSize} cannot be greater than batchSize ${this.batchSizeInBytes}
+        `Record size ${recordSize} cannot be greater than ${MAX_RECORD_SIZE} B
          for record with PartitionKey: ${kinesisRecord.PartitionKey}`
       );
     }
@@ -150,7 +152,10 @@ export class KinesisProducer {
     attempt = 1
   ): Promise<PutRecordsResultEntry[] | undefined | null> {
     if (attempt > this.maxRetries) {
-      throw new Error(`Max retries ${this.maxRetries} reached for this batch.`);
+      throw new Error(
+        `Max retries ${this.maxRetries} reached for record batch.`
+      );
+      // implement DQL logic (SQS / S3) here
     }
 
     // exponential backoff before retrying.
@@ -172,7 +177,7 @@ export class KinesisProducer {
     } catch (error) {
       if (this._loggingEnabled) {
         this.logger.error(
-          `Failed to putRecords into kinesis stream: ${error.name}: ${error.message}`
+          `Failed to PutRecords into Kinesis Stream: ${error.name}: ${error.message}`
         );
       }
       return await this.sendRecords(records, attempt + 1);
@@ -181,10 +186,15 @@ export class KinesisProducer {
     const failedRecords: PutRecordsRequestEntry[] = [];
     if (failedRecordCount > 0) {
       if (this._loggingEnabled) {
-        this.logger.warn('Retrying Failed Records');
+        this.logger.warn(`Retrying ${failedRecordCount} Failed Records`);
       }
       response['Records']?.forEach((record, idx) => {
         if (Object.prototype.hasOwnProperty.call(record, 'ErrorCode')) {
+          if (this._loggingEnabled) {
+            this.logger.warn(
+              `PutRecordsResult ${idx}: ${record['ErrorCode']}: ${record['ErrorMessage']} - ShardId: ${record['ShardId']}`
+            );
+          }
           failedRecords.push(records[idx]);
         }
       });
